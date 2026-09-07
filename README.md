@@ -58,7 +58,7 @@ bezpośrednio w oknach czasowych między golami.
 
 - `main.py` - skrypt
 - `Polonia Bytom_Pogo  Grodzisk Mazowiecki_4068759.csv` - dane wejściowe (StatsBomb)
-- `requirements.txt` - zależności
+- `requirements.txt` - wymagania
 
 ---
 
