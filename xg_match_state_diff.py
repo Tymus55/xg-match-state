@@ -8,29 +8,27 @@ When Team A is Winning, the opponent is Losing — those shots happen in
 the same time windows and must be paired together.
 """
 
-from pathlib import Path
-
 import pandas as pd
 
 # ---------------------------------------------------------------------------
-# 1. Load the CSV
+# 1. Wczytanie CSV
 # ---------------------------------------------------------------------------
-INPUT_CSV = Path(__file__).resolve().parent / (
-    "Polonia Bytom_Pogo  Grodzisk Mazowiecki_4068759.csv"
+
+df = pd.read_csv(
+    "Polonia Bytom_Pogo  Grodzisk Mazowiecki_4068759.csv",
+    low_memory=False,
 )
 
-df = pd.read_csv(INPUT_CSV, low_memory=False)
-
-# Normalize team name: "Pogoń" → "Pogon" (ASCII-safe for any console)
+# Normalizacja nazwy zespołu: "Pogoń" → "Pogon" (nie wymaga zmiany UTF-8)
 df["team_name"] = df["team_name"].str.replace("Pogoń", "Pogon", regex=False)
 
 # ---------------------------------------------------------------------------
-# 2. Deduplicate events (StatsBomb 360 duplicates rows via freeze_frame)
+# Usunięcie duplikatów
 # ---------------------------------------------------------------------------
 df = df.drop_duplicates(subset=["id"]).copy()
 
 # ---------------------------------------------------------------------------
-# 3. Sort chronologically
+# Sortowanie chronologiczne
 # ---------------------------------------------------------------------------
 df = df.sort_values(
     by=["period", "minute", "second", "timestamp"],
@@ -38,37 +36,37 @@ df = df.sort_values(
 ).reset_index(drop=True)
 
 # ---------------------------------------------------------------------------
-# 4. Running score (pre-event score via shift)
+# 4. Biężacy wynik (wynik przed zdarzenmiem uzyskany przez shift)
 # ---------------------------------------------------------------------------
-# A goal is a Shot with outcome Goal
+# Goal to strzał zakończony bramką
 is_goal = (df["event_type_name"] == "Shot") & (df["outcome_name"] == "Goal")
 
 teams = list(df["team_name"].dropna().unique())
 if len(teams) != 2:
     raise ValueError(f"Expected exactly 2 teams, found: {teams}")
 
-# Stable order: Polonia Bytom first when present
+# Stable order: Polonia Bytom 1 jeśli występuje
 preferred = ["Polonia Bytom"]
 teams = [t for t in preferred if t in teams] + [
     t for t in teams if t not in preferred
 ]
 team_a, team_b = teams[0], teams[1]
 
-# Goal flags per team (0/1) on each row
+# Goals flags dla drużyn (0/1) na każdym wierszu
 df["goal_team_a"] = (is_goal & (df["team_name"] == team_a)).astype(int)
 df["goal_team_b"] = (is_goal & (df["team_name"] == team_b)).astype(int)
 
-# Cumulative goals *after* the event, then shift(1) → score before the event.
-# The goal-scoring shot itself stays in the state that was active before it.
+# Skumulowane gole *po* zdarzeniu, następnie shift(1) → wynik przed zdarzeniem.
+# Sam strzał zakończony golem pozostaje w stanie meczu, który obowiązywał przed nim.
 df["score_a"] = df["goal_team_a"].cumsum().shift(1, fill_value=0).astype(int)
 df["score_b"] = df["goal_team_b"].cumsum().shift(1, fill_value=0).astype(int)
 
 # ---------------------------------------------------------------------------
-# 5. Match state from the perspective of the team that owns the event
+# 5. Wynik meczu z perspektywy drużyny, której dotyczy zdarzenie
 # ---------------------------------------------------------------------------
 STATE_ORDER = ["Winning", "Drawing", "Losing"]
 
-# When Team A is Winning, Team B is Losing (same scoreline / time window)
+# Jeśli drużyna A wygrywa, drużyna B przegrywa (ten sam wynik)
 COMPLEMENT = {"Winning": "Losing", "Drawing": "Drawing", "Losing": "Winning"}
 
 
@@ -89,7 +87,7 @@ def match_state_for_row(row: pd.Series) -> str:
 df["match_state"] = df.apply(match_state_for_row, axis=1)
 
 # ---------------------------------------------------------------------------
-# 6. Keep shots only
+# 6. Zachowanie tylko i wyłącznie strzałów
 # ---------------------------------------------------------------------------
 shots = df[df["event_type_name"] == "Shot"].copy()
 shots["statsbomb_xg"] = pd.to_numeric(shots["statsbomb_xg"], errors="coerce").fillna(
@@ -97,7 +95,7 @@ shots["statsbomb_xg"] = pd.to_numeric(shots["statsbomb_xg"], errors="coerce").fi
 )
 
 # ---------------------------------------------------------------------------
-# 7. Sum xG by team and match state (each team's own perspective)
+# 7. Suma xG według drużyny i wyniku meczu (perspektywa dla obu drużyn oddzielnie)
 # ---------------------------------------------------------------------------
 xg_by_team_state = (
     shots.groupby(["team_name", "match_state"], as_index=False)["statsbomb_xg"]
@@ -105,7 +103,7 @@ xg_by_team_state = (
     .rename(columns={"statsbomb_xg": "xg_sum"})
 )
 
-# Full team × state grid (missing combos → 0)
+# Pełna siatka drużyn × stan (brakujące kombinacje → 0)
 full_index = pd.MultiIndex.from_product(
     [teams, STATE_ORDER], names=["team_name", "match_state"]
 )
@@ -119,11 +117,11 @@ xg_by_team_state = (
 xg_lookup = xg_by_team_state.set_index(["team_name", "match_state"])["xg_sum"]
 
 # ---------------------------------------------------------------------------
-# 8. xG difference vs opponent in the same scoreline periods
+# 8. Różnica xG względem przeciwnika w tych samych okresach stanu meczu
 # ---------------------------------------------------------------------------
-# Pair each team's state with the opponent's complementary state:
-#   Winning ↔ Losing, Drawing ↔ Drawing, Losing ↔ Winning
-# Otherwise "Winning" would wrongly compare two different halves of the match.
+# Sparuj stan każdej drużyny z komplementarnym (odpowiadającym) stanem przeciwnika:
+#   Prowadzenie ↔ Przegrywanie, Remis ↔ Remis, Przegrywanie ↔ Prowadzenie
+# W przeciwnym razie stan "Prowadzenie" błędnie porównywałby dwie różne części meczu.
 
 
 def fmt_xg(value: float) -> str:
@@ -142,18 +140,18 @@ for team in teams:
         opp_xg = float(xg_lookup.loc[(opponent, COMPLEMENT[state])])
         rows.append(
             {
-                "Team": team,
-                "Match state": state,
-                "Team xG": fmt_xg(team_xg),
-                "Opponent xG (same periods)": fmt_xg(opp_xg),
-                "xG difference": fmt_diff(team_xg - opp_xg),
+                "druzyna": team,
+                "stan meczu": state,
+                "xG druzyny": fmt_xg(team_xg),
+                "xg przeciwnika (ten sam stan)": fmt_xg(opp_xg),
+                "roznica xg": fmt_diff(team_xg - opp_xg),
             }
         )
 
 result = pd.DataFrame(rows)
 
 # ---------------------------------------------------------------------------
-# 9. Print a readable Markdown table
+# 9. Wypisanie czytelnej tabeli Markdown
 # ---------------------------------------------------------------------------
 def to_markdown_table(frame: pd.DataFrame) -> str:
     """Aligned Markdown table (readable in a terminal)."""
@@ -173,12 +171,12 @@ def to_markdown_table(frame: pd.DataFrame) -> str:
     return "\n".join([header, sep, *body])
 
 
-print("xG difference by match state")
+print("Rożnica xG według stanu meczu")
 print(f"Match: {team_a} vs {team_b}")
 print(
-    "Match state = score from that team's perspective before the shot. "
-    "Opponent xG uses the complementary state (same scoreline periods)."
+    "Stan meczu = wynik z perspektywy drużyny, której dotyczy zdarzenie. "
+    "xG przeciwnika używa komplementarnego stanu (ten sam wynik)."
 )
-print("xG difference = Team xG - Opponent xG in those periods.")
+print("Różnica xG = xG drużyny - xG przeciwnika w tym samym stanie meczu.")
 print()
 print(to_markdown_table(result))
