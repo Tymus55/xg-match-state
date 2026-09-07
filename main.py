@@ -1,11 +1,8 @@
 """
-xG difference by match state (Winning / Drawing / Losing)
-for Polonia Bytom vs Pogon Grodzisk Mazowiecki (StatsBomb events).
+Rożnica xG według stanu meczu (Zwycięstwo / Remis / Przegrana)
+    for Polonia Bytom vs Pogon Grodzisk Mazowiecki (StatsBomb events).
 
-Important: "same state" means the same scoreline periods on the pitch,
-not the same label from each team's own perspective.
-When Team A is Winning, the opponent is Losing — those shots happen in
-the same time windows and must be paired together.
+
 """
 
 import pandas as pd
@@ -64,18 +61,22 @@ df["score_b"] = df["goal_team_b"].cumsum().shift(1, fill_value=0).astype(int)
 # ---------------------------------------------------------------------------
 # 5. Wynik meczu z perspektywy drużyny, której dotyczy zdarzenie
 # ---------------------------------------------------------------------------
-STATE_ORDER = ["Winning", "Drawing", "Losing"]
+STATE_ORDER = ["Zwycięstwo", "Remis", "Przegrana"]
 
 # Jeśli drużyna A wygrywa, drużyna B przegrywa (ten sam wynik)
-COMPLEMENT = {"Winning": "Losing", "Drawing": "Drawing", "Losing": "Winning"}
+COMPLEMENT = {
+    "Zwycięstwo": "Przegrana",
+    "Remis": "Remis",
+    "Przegrana": "Zwycięstwo",
+}
 
 
 def match_state(own_score: int, opp_score: int) -> str:
     if own_score > opp_score:
-        return "Winning"
+        return "Zwycięstwo"
     if own_score < opp_score:
-        return "Losing"
-    return "Drawing"
+        return "Przegrana"
+    return "Remis"
 
 
 def match_state_for_row(row: pd.Series) -> str:

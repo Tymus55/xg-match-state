@@ -1,62 +1,64 @@
-# Różnica xg według
+# Zadanie 1: Różnica xG według stanu meczu
 
-Answer to task 1 of the internship assignment: calculate the xG (expected goals)
-difference for each match state (Winning / Drawing / Losing) for both teams in
-Polonia Bytom vs Pogon Grodzisk Mazowiecki, based on StatsBomb event data.
+Obliczenie różnicy xG (expected goals) dla każdego stanu meczu
+(Zwycięstwo / Remis / Przegrana) obu drużyn w meczu Polonia Bytom vs
+Pogon Grodzisk Mazowiecki, na podstawie danych zdarzeniowych StatsBomb.
 
-## Run
+## Uruchomienie
 
 ```bash
 pip install -r requirements.txt
-python xg_match_state_diff.py
+python main.py
 ```
 
-## Requirements
+## Wymagania
 
-| Package | Version | Purpose                     |
-| ------- | ------- | --------------------------- |
-| Python  | >= 3.9  | runtime                     |
-| pandas  | >= 2.0  | data loading & aggregation  |
+| Pakiet | Wersja | Do czego                    |
+| ------ | ------ | --------------------------- |
+| Python | >= 3.9 | środowisko uruchomieniowe   |
+| pandas | >= 2.0 | wczytanie i agregacja danych |
 
-## Method
+## Metoda
 
-1. Load the CSV and deduplicate events by `id` (StatsBomb 360 repeats rows per
-   `freeze_frame` player).
-2. Sort chronologically by `period`, `minute`, `second`, `timestamp`.
-3. Recreate the running score: a goal is `event_type_name == "Shot"` with
-   `outcome_name == "Goal"`. Cumulative goals per team are shifted by one event
-   (`shift(1)`), so the score changes from the event *after* the goal and the
-   goal shot itself is counted in the state that was active before it.
-4. Assign `match_state` (Winning / Drawing / Losing) from the perspective of
-   the team owning the event.
-5. Keep shots only and sum `statsbomb_xg` by team and match state.
-6. xG difference = team xG in a state minus opponent xG in the **same scoreline
-   periods**. Because the states are relative to each team, the opponent's state
-   is the complementary one: Winning <-> Losing, Drawing <-> Drawing. Pairing by
-   identical label would compare shots from different parts of the match.
+1. Wczytanie CSV i deduplikacja zdarzeń po kolumnie `id` (StatsBomb 360
+   powiela wiersze dla każdego zawodnika w `freeze_frame`).
+2. Sortowanie chronologiczne: `period`, `minute`, `second`, `timestamp`.
+3. Odtworzenie bieżącego wyniku. Gol to `event_type_name == "Shot"` oraz
+   `outcome_name == "Goal"`. Skumulowana suma goli dla każdej drużyny jest
+   przesunięta o jedno zdarzenie (`shift(1)`), więc wynik zmienia się od
+   zdarzenia *po* golu, a sam strzał bramkowy liczy się w stanie, który
+   obowiązywał przed jego oddaniem.
+4. Przypisanie `match_state` (Zwycięstwo / Remis / Przegrana) z perspektywy
+   drużyny, której dotyczy zdarzenie.
+5. Zostawienie tylko strzałów i zsumowanie `statsbomb_xg` po drużynie i stanie.
+6. Różnica xG = xG drużyny w danym stanie minus xG przeciwnika w **tych samych
+   okresach wyniku**. Stany są względne wobec każdej drużyny, więc przeciwnik
+   bierze stan komplementarny: Zwycięstwo <-> Przegrana, Remis <-> Remis.
+   Łączenie po tej samej etykiecie porównywałoby strzały z różnych fragmentów
+   meczu.
 
-## Result
+## Wynik
 
-Match finished 2-2 (Pogon 21', Polonia 27' and 36', Pogon 45' 2nd half).
+Mecz zakończył się 2:2 (Pogon 21', Polonia 27' i 36', Pogon 45' II połowa).
 
-| Team                      | Match state | Team xG | Opponent xG (same periods) | xG difference |
-| ------------------------- | ----------- | ------- | -------------------------- | ------------- |
-| Polonia Bytom             | Winning     | 0.066   | 0.017                      | +0.050        |
-| Polonia Bytom             | Drawing     | 0.923   | 0.609                      | +0.314        |
-| Polonia Bytom             | Losing      | 0.079   | 0.117                      | -0.038        |
-| Pogon Grodzisk Mazowiecki | Winning     | 0.117   | 0.079                      | +0.038        |
-| Pogon Grodzisk Mazowiecki | Drawing     | 0.609   | 0.923                      | -0.314        |
-| Pogon Grodzisk Mazowiecki | Losing      | 0.017   | 0.066                      | -0.050        |
+| druzyna                   | stan meczu | xG druzyny | xg przeciwnika (ten sam stan) | roznica xg |
+| ------------------------- | ---------- | ---------- | ----------------------------- | ---------- |
+| Polonia Bytom             | Zwycięstwo | 0.066      | 0.017                         | +0.050     |
+| Polonia Bytom             | Remis      | 0.923      | 0.609                         | +0.314     |
+| Polonia Bytom             | Przegrana  | 0.079      | 0.117                         | -0.038     |
+| Pogon Grodzisk Mazowiecki | Zwycięstwo | 0.117      | 0.079                         | +0.038     |
+| Pogon Grodzisk Mazowiecki | Remis      | 0.609      | 0.923                         | -0.314     |
+| Pogon Grodzisk Mazowiecki | Przegrana  | 0.017      | 0.066                         | -0.050     |
 
-Sanity checks: 34 shots total (Polonia 20, Pogon 14), per-state xG sums match
-team totals (1.069 / 0.743), and the numbers were cross-checked by summing xG
-directly over the time windows between goals.
+Kontrola: 34 strzały łącznie (Polonia 20, Pogon 14), sumy xG po stanach zgadzają
+się z totalami drużyn (1.069 / 0.743). Liczby sprawdzone też przez sumowanie xG
+bezpośrednio w oknach czasowych między golami.
 
-## Files
+## Pliki
 
-- `xg_match_state_diff.py` - the script
-- `Polonia Bytom_Pogo  Grodzisk Mazowiecki_4068759.csv` - input data (StatsBomb)
-- `requirements.txt` - dependencies
+- `main.py` - skrypt
+- `Polonia Bytom_Pogo  Grodzisk Mazowiecki_4068759.csv` - dane wejściowe (StatsBomb)
+- `requirements.txt` - zależności
 
 ---
 
