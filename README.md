@@ -13,10 +13,10 @@ python main.py
 
 ## Wymagania
 
-| Pakiet | Wersja | Do czego                    |
-| ------ | ------ | --------------------------- |
-| Python | >= 3.9 | środowisko uruchomieniowe   |
-| pandas | >= 2.0 | wczytanie i agregacja danych |
+| Pakiet | Wersja | Do czego                  |
+| ------ | ------ | --------------------------|
+| Python | >= 3.9 | środowisko                |
+| pandas | >= 2.0 | wczytanie i analiza danych|
 
 ## Metoda
 
@@ -39,7 +39,7 @@ python main.py
 
 ## Wynik
 
-Mecz zakończył się 2:2 (Pogon 21', Polonia 27' i 36', Pogon 45' II połowa).
+Mecz zakończył się wynikiem 2:2 (Pogon 21', Polonia 27' i 36', Pogon 45' II połowa).
 
 | druzyna                   | stan meczu | xG druzyny | xg przeciwnika (ten sam stan) | roznica xg |
 | ------------------------- | ---------- | ---------- | ----------------------------- | ---------- |
@@ -86,10 +86,10 @@ Werdykt z samych eventów to zawsze warunkowy: „pasuje / nie pasuje do naszego
 
 StatsBomb (w tym 360) to event data: zdarzenia z udziałem piłki, czasem z kontekstem zawodników w kadrze w momencie strzału lub podania. To nie jest tracking data ani physical data. Różnica jest fundamentalna: event data mówi, *co zrobił piłkarz z piłką*; tracking mówi, *gdzie był i jak się poruszał przez całe 90 minut*. Na wahadle ta luka boli najbardziej.
 
-1. Brak danych motorycznych. Wahadłowy jest jedną z najbardziej wymagających fizycznie pozycji. Z eventów nie wyciągnę dystansu w High Speed Running, liczby sprintów, powtarzalności wysiłku w drugiej połowie ani Work Rate. Zawodnik może mieć świetne progressive carries w 20 meczach i jednocześnie nie wytrzymać naszego obciążenia mecz + trening, albo spadać po 60. minucie. Tego ze StatsBomb nie zobaczę.
+1. Brak danych motorycznych. Wahadłowy jest jedną z najbardziej wymagających fizycznie pozycji. Z eventów nie wyciągnę dystansu w High Speed Running, liczby sprintów, powtarzalności wysiłku w drugiej połowie ani Work Rate. Zawodnik może mieć świetne progressive carries w 20 meczach i jednocześnie nie wytrzymać obciążenia meczu.
 
-2. Ruch bez piłki. Event data prawie w ogóle nie rejestruje off-ball movement. Idealny overlapping run, który ściąga obrońcę i otwiera półprzestrzeń dla ósemki, nie istnieje w danych, jeśli zawodnik nie dostał podania. To samo dotyczy cofania się do linii i ustawiania przed dośrodkowaniem rywala: jeśli nie było tackle’a ani interception, w eventach go nie ma. A właśnie te przebiegi bez piłki często decydują, czy ktoś „gra jak wahadło”, czy tylko zbiera ładne liczby przy piłce.
+2. Ruch bez piłki. Event data prawie w ogóle nie rejestruje off-ball movement. Idealny overlapping run, który ściąga obrońcę i otwiera półprzestrzeń dla ósemki, nie istnieje w danych, jeśli zawodnik nie dostał podania. To samo dotyczy cofania się do linii i ustawiania przed dośrodkowaniem rywala: jeśli nie było odbioru bądź przyjęcia, w eventach go nie ma, a właśnie te wydarzenia bez piłki często decydują, czy ktoś gra jako wahadłowy.
 
-3. Bias systemu poprzedniej drużyny. 20 meczów to próbka zachowań w konkretnym taktycznym pudełku. Jeśli X grał jako fullback w czwórce w niskim bloku, jego liczby ofensywne (crosses, xA, progressive carries w ostatniej trzeciej) będą słabe z definicji: system mu tego nie dawał. To nie znaczy, że nie poradzi sobie wyżej na wahadle przy trójce stoperów, gdzie ma więcej przestrzeni i obowiązek atakowania. Odwrotnie: skrzydłowy z wysokiego pressingu może wyglądać ofensywnie rewelacyjnie, a w naszym systemie okazać się słaby w 1v1 po cofnięciu. Event data mierzy output w danym kontekście, nie potencjał w innym. Bez video, scoutingu taktycznego i porównania ról (role continuity) łatwo odrzucić dobrego kandydata albo kupić „ładne liczby”.
+3. Bias systemu poprzedniej drużyny. 20 meczów to próbka zachowań w konkretnym taktycznym pudełku. Jeśli X grał jako fullback w czwórce w niskim bloku, jego liczby ofensywne (crosses, xA, progressive carries w ostatniej trzeciej) będą słabe z definicji: system tego od niego nie wymagał. To nie znaczy, że nie poradzi sobie wyżej na wahadle przy trójce stoperów, gdzie ma więcej przestrzeni i sposobności do atakowania atakowania. Odwrotnie: skrzydłowy z wysokiego może wyglądać w ofensywnie rewelacyjnie, a w naszym systemie okazać się słaby w 1v1 po cofnięciu. Event data mierzy output w danym kontekście, nie potencjał w innym. Bez video, scoutingu taktycznego i porównania ról  łatwo odrzucić dobrego kandydata albo wybrać „ładne liczby”.
 
-Dlatego StatsBomb z 20 meczów to dobry filtr wstępny i dobre pytanie do wideo („czy te carries to naprawdę wahadło, czy izolowane dryblingi?”). Nie wystarczą do decyzji transferowej na tę pozycję. Do domknięcia potrzebuję tracking/physical (obciążenie, powtarzalność sprintów), analizy ruchu bez piłki z video oraz świadomego odfiltrowania biasu systemu, w którym zawodnik dotychczas grał.
+Dane ze StatsBomb to dobry wstęp , lecz nie są wystarczające do kompletnej analizy zawodnika. Potrzebne są dane określające jego cechy fizyczne (np. powtarzalność sprintów) oraz movement bez piłki.
