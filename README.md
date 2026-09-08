@@ -20,19 +20,18 @@ python main.py
 
 ## Metoda
 
-1. Wczytanie CSV i deduplikacja zdarzeń po kolumnie `id` (StatsBomb 360
+1. Wczytanie CSV i usunięcie duplikatów zdarzeń po kolumnie `id` (StatsBomb 360
    powiela wiersze dla każdego zawodnika w `freeze_frame`).
 2. Sortowanie chronologiczne: `period`, `minute`, `second`, `timestamp`.
 3. Odtworzenie bieżącego wyniku. Gol to `event_type_name == "Shot"` oraz
    `outcome_name == "Goal"`. Skumulowana suma goli dla każdej drużyny jest
-   przesunięta o jedno zdarzenie (`shift(1)`), więc wynik zmienia się od
-   zdarzenia *po* golu, a sam strzał bramkowy liczy się w stanie, który
+   przesunięta o jedno zdarzenie (`shift(1)`), więc wynik zmienia się po
+   zdarzeniu (po golu), a sam celny strzał liczy się do stanu, który
    obowiązywał przed jego oddaniem.
 4. Przypisanie `match_state` (Zwycięstwo / Remis / Przegrana) z perspektywy
    drużyny, której dotyczy zdarzenie.
 5. Zostawienie tylko strzałów i zsumowanie `statsbomb_xg` po drużynie i stanie.
-6. Różnica xG = xG drużyny w danym stanie minus xG przeciwnika w **tych samych
-   okresach wyniku**. Stany są względne wobec każdej drużyny, więc przeciwnik
+6. Różnica xG = xG drużyny w danym stanie minus xG przeciwnika w tym samym stanie. Stany są względne wobec każdej drużyny, więc przeciwnik
    bierze stan komplementarny: Zwycięstwo <-> Przegrana, Remis <-> Remis.
    Łączenie po tej samej etykiecie porównywałoby strzały z różnych fragmentów
    meczu.
@@ -68,11 +67,11 @@ Pytanie: czy zawodnik X nadaje się na wahadłowego w naszym systemie, mając St
 
 ## 1. Podejście analityczne (jak ocenię zawodnika)
 
-Wahadłowy w systemie z trójką stoperów gra na całej długości boiska. W fazie ataku musi dawać szerokość, dośrodkowania i wejścia w pole karne. W fazie obrony wraca do linii czterech, broni 1v1 i uczestniczy w pressingu. Profil, którego szukam, to balans: nie skrajny skrzydłowy z wysokim xA i słabą obroną, i nie klasyczny fullback, który rzadko przekracza połowę.
+Wahadłowy w systemie z trójką stoperów gra na całej długości boiska. W fazie ataku musi dawać szerokość, dośrodkowania i wejścia w pole karne. W fazie obrony wraca do linii czterech, broni 1v1 i uczestniczy w pressingu. Profil, którego szukam, to balans: nie skrajny skrzydłowy z wysokim xA i słabą obroną, i nie klasyczny fullback, który rzadko uczestniczy w akcjach ofensywnych.
 
 Z 20 meczów StatsBomb buduję profil w trzech warstwach: ofensywa, defensywa, przestrzeń.
 
-Ofensywa. Progressive carries i progressive passes pokazują, czy zawodnik faktycznie przenosi grę do przodu, czy tylko utrzymuje piłkę na boku. xA z otwartej gry (bez stałych fragmentów) mówi, czy jego dośrodkowania i podania w pole karne mają realną wartość bramkową, a nie tylko wolumen. Crosses filtruję po strefie: dośrodkowanie z linii końcowej to inny profil niż z połowy boiska. Udział w xGChain i Shot-Creating Actions sprawdza, czy zawodnik regularnie pojawia się w sekwencjach kończących się strzałem, nawet gdy sam nie asystuje.
+Ofensywa. Progressive carries i progressive passes pokazują, czy zawodnik faktycznie przenosi grę do przodu, czy tylko utrzymuje piłkę na boku. xA z otwartej gry (bez stałych fragmentów) mówi, czy jego dośrodkowania i podania w pole karne tworzą realne zagrożenie, a nie tylko liczby. Crosses filtruję po strefie: dośrodkowanie z linii końcowej to inny profil niż z połowy boiska. Udział w xGChain i Shot-Creating Actions sprawdza, czy zawodnik regularnie pojawia się w sekwencjach kończących się strzałem, nawet gdy sam nie asystuje.
 
 Defensywa. Skuteczność defensive duels (wygrane / wszystkie) w strefie boisku, zwłaszcza w 1v1 przy linii. Pressures i counterpressures na połowie rywala: wahadłowy w naszym systemie często jest pierwszym zawodnikiem, który zamyka szerokość po stracie. Interceptions i ball recoveries w środkowej i wysokiej trzeciej: czy czyta grę, czy tylko reaguje po dośrodkowaniu rywala.
 
@@ -80,7 +79,7 @@ Przestrzeń. Na współrzędnych `location_x`, `location_y` buduję heatmapę zd
 
 Na koniec normalizuję metryki na 90 minut i rozbijam po stanie meczu oraz fazie (atak pozycyjny vs kontratak). Zawodnik, który „znika” przy prowadzeniu albo nie wraca po stracie, odpada niezależnie od ładnego xA.
 
-Werdykt z samych eventów to zawsze warunkowy: „pasuje / nie pasuje do naszego profilu wahadła *na podstawie tego, co StatsBomb rejestruje*”. Decyzję domykam dopiero po video i danych fizycznych.
+Werdykt z samych eventów to zawsze warunkowy: pasuje / nie pasuje do naszego profilu wahadła (na podstawie danych z StatsBomb). Na podstawie danych z StatsBomb nie można podjąć decyzji co do transferu, jedynie czy warto wziąć zawodnika pod uwagę.
 
 ## 2. Ograniczenia danych (gdzie StatsBomb mnie zawodzi)
 
@@ -90,6 +89,6 @@ StatsBomb (w tym 360) to event data: zdarzenia z udziałem piłki, czasem z kont
 
 2. Ruch bez piłki. Event data prawie w ogóle nie rejestruje off-ball movement. Idealny overlapping run, który ściąga obrońcę i otwiera półprzestrzeń dla ósemki, nie istnieje w danych, jeśli zawodnik nie dostał podania. To samo dotyczy cofania się do linii i ustawiania przed dośrodkowaniem rywala: jeśli nie było odbioru bądź przyjęcia, w eventach go nie ma, a właśnie te wydarzenia bez piłki często decydują, czy ktoś gra jako wahadłowy.
 
-3. Bias systemu poprzedniej drużyny. 20 meczów to próbka zachowań w konkretnym taktycznym pudełku. Jeśli X grał jako fullback w czwórce w niskim bloku, jego liczby ofensywne (crosses, xA, progressive carries w ostatniej trzeciej) będą słabe z definicji: system tego od niego nie wymagał. To nie znaczy, że nie poradzi sobie wyżej na wahadle przy trójce stoperów, gdzie ma więcej przestrzeni i sposobności do atakowania atakowania. Odwrotnie: skrzydłowy z wysokiego może wyglądać w ofensywnie rewelacyjnie, a w naszym systemie okazać się słaby w 1v1 po cofnięciu. Event data mierzy output w danym kontekście, nie potencjał w innym. Bez video, scoutingu taktycznego i porównania ról  łatwo odrzucić dobrego kandydata albo wybrać „ładne liczby”.
+3. Bias systemu poprzedniej drużyny. 20 meczów to próbka zachowań w konkretnym taktycznym pudełku. Jeśli X grał jako fullback w czwórce w niskim bloku, jego liczby ofensywne (crosses, xA, progressive carries w ostatniej trzeciej) będą słabe z definicji: system tego od niego nie wymagał. To nie znaczy, że nie poradzi sobie wyżej na wahadle przy trójce stoperów, gdzie ma więcej przestrzeni i sposobności do atakowania. Odwrotnie: skrzydłowy z wysokiego może wyglądać w ofensywnie rewelacyjnie, a w naszym systemie okazać się słaby w 1v1 po cofnięciu. Event data mierzy output w danym kontekście, nie potencjał w innym. Bez video, scoutingu taktycznego i porównania ról  łatwo odrzucić dobrego kandydata albo wybrać „ładne liczby”.
 
-Dane ze StatsBomb to dobry wstęp , lecz nie są wystarczające do kompletnej analizy zawodnika. Potrzebne są dane określające jego cechy fizyczne (np. powtarzalność sprintów) oraz movement bez piłki.
+Dane ze StatsBomb to dobry wstęp, lecz nie są wystarczające do kompletnej analizy zawodnika. Potrzebne są dane określające jego cechy fizyczne (np. powtarzalność sprintów) oraz movement bez piłki.
